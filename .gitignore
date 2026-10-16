@@ -1,0 +1,7 @@
+build/
+*.asi
+*.log
+# Never commit game files
+*.exe
+GalileoKernel.dll
+AIFunctionsMapping.txt
