@@ -1,0 +1,3 @@
+LIBRARY GalileoSimulatorWater
+EXPORTS
+  sCreate @1

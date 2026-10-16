@@ -14,16 +14,31 @@ using Direct3DCreate9_t = IDirect3D9*(WINAPI*)(UINT);
 using CreateDevice_t = HRESULT(STDMETHODCALLTYPE*)(IDirect3D9*, UINT, D3DDEVTYPE, HWND, DWORD, D3DPRESENT_PARAMETERS*, IDirect3DDevice9**);
 using Reset_t = HRESULT(STDMETHODCALLTYPE*)(IDirect3DDevice9*, D3DPRESENT_PARAMETERS*);
 using Present_t = HRESULT(STDMETHODCALLTYPE*)(IDirect3DDevice9*, const RECT*, const RECT*, HWND, const RGNDATA*);
+using SwapChainPresent_t = HRESULT(STDMETHODCALLTYPE*)(IDirect3DSwapChain9*, const RECT*, const RECT*, HWND, const RGNDATA*, DWORD);
 
 // Vtable slots (d3d9.h declaration order).
 constexpr int kCreateDeviceSlot = 16;
 constexpr int kResetSlot = 16;
 constexpr int kPresentSlot = 17;
+constexpr int kSwapChainPresentSlot = 3;
 
 static Direct3DCreate9_t oDirect3DCreate9;
 static CreateDevice_t oCreateDevice;
 static Reset_t oReset;
 static Present_t oPresent;
+static SwapChainPresent_t oSwapChainPresent;
+// The game can present through the device or a swap chain, and the device's
+// Present may itself go through the swap chain; pace each frame only once.
+static bool g_inPresent = false;
+
+static void FramePresented(const char* via) {
+  static const char* logged = nullptr;
+  if (logged != via) {
+    logged = via;
+    LOG("D3D9: frames presented via %s", via);
+  }
+  pacing::OnPresent();
+}
 
 static void FixParams(D3DPRESENT_PARAMETERS* pp) {
   if (!pp) return;
@@ -51,8 +66,25 @@ static void HookOnce(void* target, T detour, T* original, const char* name) {
 }
 
 static HRESULT STDMETHODCALLTYPE hkPresent(IDirect3DDevice9* dev, const RECT* src, const RECT* dst, HWND wnd, const RGNDATA* dirty) {
+  bool outer = !g_inPresent;
+  g_inPresent = true;
   HRESULT hr = oPresent(dev, src, dst, wnd, dirty);
-  pacing::OnPresent();
+  if (outer) {
+    g_inPresent = false;
+    FramePresented("IDirect3DDevice9::Present");
+  }
+  return hr;
+}
+
+static HRESULT STDMETHODCALLTYPE hkSwapChainPresent(IDirect3DSwapChain9* sc, const RECT* src, const RECT* dst, HWND wnd,
+                                                    const RGNDATA* dirty, DWORD flags) {
+  bool outer = !g_inPresent;
+  g_inPresent = true;
+  HRESULT hr = oSwapChainPresent(sc, src, dst, wnd, dirty, flags);
+  if (outer) {
+    g_inPresent = false;
+    FramePresented("IDirect3DSwapChain9::Present");
+  }
   return hr;
 }
 
@@ -68,6 +100,11 @@ static HRESULT STDMETHODCALLTYPE hkCreateDevice(IDirect3D9* d3d, UINT adapter, D
   if (SUCCEEDED(hr) && out && *out) {
     HookOnce(VtableEntry(*out, kResetSlot), &hkReset, &oReset, "Reset");
     HookOnce(VtableEntry(*out, kPresentSlot), &hkPresent, &oPresent, "Present");
+    IDirect3DSwapChain9* sc = nullptr;
+    if (SUCCEEDED((*out)->GetSwapChain(0, &sc)) && sc) {
+      HookOnce(VtableEntry(sc, kSwapChainPresentSlot), &hkSwapChainPresent, &oSwapChainPresent, "SwapChain Present");
+      sc->Release();
+    }
   } else {
     LOG("D3D9: CreateDevice failed 0x%08lx", hr);
   }

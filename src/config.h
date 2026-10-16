@@ -11,8 +11,12 @@ struct Config {
   int fpsLimit = 60;           // 0 = uncapped
   bool vsync = false;
   int simHz = 30;              // the rate the game simulation was designed for
-  int maxSimStepsPerFrame = 4;  // avoids a death spiral after a hitch
+  bool fixedSimulation = true;  // run the simulation at simHz instead of once per frame
   bool forceUnlock = false;    // unlock even if the sim hook is missing (physics runs fast)
+
+  // [Videos]
+  bool skipIntroLogos = true;  // the startup logo video
+  bool skipCutscenes = true;   // every later video, e.g. after choosing a map
 
   // [Debug]
   bool log = true;

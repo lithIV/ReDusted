@@ -6,6 +6,7 @@
 #include "framepacing.h"
 #include "game_hooks.h"
 #include "graphics.h"
+#include "intros.h"
 #include "log.h"
 
 static std::wstring ModuleDir(HMODULE self) {
@@ -18,9 +19,9 @@ static std::wstring ModuleDir(HMODULE self) {
 
 static void Init(HMODULE self) {
   std::wstring dir = ModuleDir(self);
-  LoadConfig((dir + L"\\FromDustFix.ini").c_str());
-  logx::Init((dir + L"\\FromDustFix.log").c_str(), g_cfg.log);
-  LOG("FromDustFix loaded");
+  LoadConfig((dir + L"\\ReDusted.ini").c_str());
+  logx::Init((dir + L"\\ReDusted.log").c_str(), g_cfg.log);
+  LOG("ReDusted loaded");
 
   if (MH_Initialize() != MH_OK) {
     LOG("MinHook failed to initialise, nothing installed");
@@ -30,6 +31,7 @@ static void Init(HMODULE self) {
   borderless::Install();
   graphics::Install();
   game::Install();
+  intros::Install();
   MH_EnableHook(MH_ALL_HOOKS);
 }
 

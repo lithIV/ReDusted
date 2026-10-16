@@ -2,11 +2,15 @@
 
 namespace pacing {
 void Init();
-// Called once per presented frame: sleeps to hold the FPS limit and advances
-// the simulation clock.
+// Frame limiter entry points: the game's own frame tick when it could be
+// hooked (UseGameFrames(true)), Present otherwise. Each sleeps to hold the
+// FPS limit.
 void OnPresent();
-// Number of fixed simulation steps the next frame should run.
-int TakeSimSteps();
+void OnGameFrame();
+void UseGameFrames(bool use);
+// Called once per frame by the simulator hook: true if a simulation step is
+// due, measured in real time against Framerate.SimulationHz.
+bool ConsumeSimStep();
 // True once the 30 fps cap is lifted (needs the sim hook, or ForceUnlock).
 bool Unlocked();
 void SetUnlocked(bool unlocked);

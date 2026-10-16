@@ -8,9 +8,10 @@ namespace pacing {
 static LARGE_INTEGER g_freq;
 static LONGLONG g_lastPresent = 0;
 static LONGLONG g_nextDeadline = 0;
+static LONGLONG g_lastSimCall = 0;
 static double g_simAccum = 0.0;
-static int g_pendingSteps = 1;
 static bool g_unlocked = false;
+static bool g_useGameFrames = false;
 
 static LONGLONG Now() {
   LARGE_INTEGER t;
@@ -45,31 +46,57 @@ static void Limit() {
   g_nextDeadline += frame;
 }
 
-void OnPresent() {
-  Limit();
-
+// Logs the real frame rate every few seconds, so a report can say what the
+// limiter actually achieved.
+static void Measure() {
+  static LONGLONG windowStart = 0;
+  static int frames = 0;
   LONGLONG now = Now();
-  if (g_lastPresent != 0) {
-    g_simAccum += double(now - g_lastPresent) / double(g_freq.QuadPart);
+  if (windowStart == 0) windowStart = now;
+  ++frames;
+  double secs = double(now - windowStart) / double(g_freq.QuadPart);
+  if (secs >= 5.0) {
+    LOG("Frame pacing: %.1f fps over the last %.0f s (thread %lu)", frames / secs, secs, GetCurrentThreadId());
+    windowStart = now;
+    frames = 0;
   }
-  g_lastPresent = now;
-
-  const double step = 1.0 / g_cfg.simHz;
-  int steps = int(g_simAccum / step);
-  if (steps > g_cfg.maxSimStepsPerFrame) {
-    // After a long hitch, drop the backlog instead of fast-forwarding.
-    steps = g_cfg.maxSimStepsPerFrame;
-    g_simAccum = 0.0;
-  } else {
-    g_simAccum -= steps * step;
-  }
-  g_pendingSteps = steps;
 }
 
-int TakeSimSteps() {
-  int steps = g_pendingSteps;
-  g_pendingSteps = 0;
-  return steps;
+static void Frame() {
+  Limit();
+  Measure();
+}
+
+void OnPresent() {
+  if (!g_useGameFrames) Frame();
+}
+
+void OnGameFrame() {
+  if (g_useGameFrames) Frame();
+}
+
+void UseGameFrames(bool use) {
+  g_useGameFrames = use;
+  LOG("Frame pacing: limiting %s", use ? "in the game's frame tick" : "in Present");
+}
+
+bool ConsumeSimStep() {
+  const double step = 1.0 / g_cfg.simHz;
+  LONGLONG now = Now();
+  if (g_lastSimCall == 0) {
+    g_lastSimCall = now;
+    return true;
+  }
+  g_simAccum += double(now - g_lastSimCall) / double(g_freq.QuadPart);
+  g_lastSimCall = now;
+  // Frame times jitter around 1/simHz, so a step that is slightly early still
+  // runs; the difference is carried, which keeps the long-run rate exact.
+  if (g_simAccum < step * 0.9) return false;
+  g_simAccum -= step;
+  // At most one step fits in a frame, so below simHz the simulation slows down
+  // (as the original game did) instead of building a backlog.
+  if (g_simAccum > step) g_simAccum = step;
+  return true;
 }
 
 bool Unlocked() { return g_unlocked; }

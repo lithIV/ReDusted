@@ -1,10 +1,12 @@
 #include "game_hooks.h"
 #include <windows.h>
 #include <MinHook.h>
+#include <cstring>
 #include "config.h"
 #include "framepacing.h"
 #include "log.h"
 #include "pattern.h"
+#include "simulation.h"
 
 namespace game {
 
@@ -42,27 +44,57 @@ static bool PatchFrameCap(HMODULE exe, float threshold) {
   return ok;
 }
 
-// TODO: the terrain/water/lava simulation lives in GalileoSimulatorWater.dll
-// (loaded from the SSE3/SSSE3/SSE41 subfolder by the exe). Its step function
-// needs to be identified before it can be hooked to run at a fixed rate via
-// pacing::TakeSimSteps().
-static bool InstallSimHook() {
-  LOG("Simulation hook: not implemented yet");
-  return false;
+// The frame tick starts 0x6F bytes before the cap comparison:
+//   push ecx; push ebp; push esi; push edi; mov esi,ecx; call ...
+static constexpr int kTickStartFromCapSig = 0x6F;
+static const uint8_t kTickPrologue[] = {0x51, 0x55, 0x56, 0x57, 0x8B, 0xF1, 0xE8};
+
+using FrameTick_t = void(__fastcall*)(void* self, void* edx);
+static FrameTick_t oFrameTick;
+
+// Every frame of the game (menus included) goes through this tick, whatever
+// path the renderer takes, so the frame limiter lives here.
+static void __fastcall hkFrameTick(void* self, void* edx) {
+  pacing::OnGameFrame();
+  oFrameTick(self, edx);
+}
+
+static bool HookFrameTick(HMODULE exe) {
+  uint8_t* hit = FindPattern(exe, kFrameCapSig);
+  if (!hit) return false;
+  uint8_t* tick = hit - kTickStartFromCapSig;
+  if (memcmp(tick, kTickPrologue, sizeof(kTickPrologue)) != 0) {
+    LOG("Frame tick: unexpected code at %p, limiting in Present instead", tick);
+    return false;
+  }
+  MH_STATUS s = MH_CreateHook(tick, reinterpret_cast<LPVOID>(&hkFrameTick), reinterpret_cast<LPVOID*>(&oFrameTick));
+  LOG("Frame tick: hook %p %s", tick, s == MH_OK ? "ok" : MH_StatusToString(s));
+  return s == MH_OK;
+}
+
+// Called if the simulator turns out to be a build the hook does not know:
+// the comparison goes back to the game's own 30 fps.
+static void RelockFrameCap() {
+  if (g_cfg.forceUnlock) return;
+  g_capThreshold[0] = 30.0f;
+  pacing::SetUnlocked(false);
 }
 
 void Install() {
   HMODULE exe = GetModuleHandleW(nullptr);
-  bool simFixed = InstallSimHook();
+  // Installed either way so the simulation rate shows up in the log.
+  bool simFixed = sim::Install(&RelockFrameCap) && sim::InstallDriver(exe) && g_cfg.fixedSimulation;
 
   if (!simFixed && !g_cfg.forceUnlock) {
     LOG("Frame cap: kept at 30 fps because the simulation fix is not active (set ForceUnlock=1 to override)");
     pacing::SetUnlocked(false);
     return;
   }
-  // Our own limiter in Present does the pacing; the game's per-second
+  // Our own limiter in the frame tick does the pacing; the game's per-second
   // counter would only make frame times uneven, so its threshold is lifted out of reach.
-  pacing::SetUnlocked(PatchFrameCap(exe, 100000.0f));
+  bool unlocked = PatchFrameCap(exe, 100000.0f);
+  pacing::SetUnlocked(unlocked);
+  if (unlocked) pacing::UseGameFrames(HookFrameTick(exe));
 }
 
 }  // namespace game

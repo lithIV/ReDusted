@@ -18,12 +18,14 @@ void LoadConfig(const wchar_t* path) {
   c.fpsLimit = ReadInt(path, L"Framerate", L"FPSLimit", c.fpsLimit);
   c.vsync = ReadInt(path, L"Framerate", L"VSync", c.vsync) != 0;
   c.simHz = ReadInt(path, L"Framerate", L"SimulationHz", c.simHz);
-  c.maxSimStepsPerFrame = ReadInt(path, L"Framerate", L"MaxSimStepsPerFrame", c.maxSimStepsPerFrame);
+  c.fixedSimulation = ReadInt(path, L"Framerate", L"FixedSimulation", c.fixedSimulation) != 0;
   c.forceUnlock = ReadInt(path, L"Framerate", L"ForceUnlock", c.forceUnlock) != 0;
+
+  c.skipIntroLogos = ReadInt(path, L"Videos", L"SkipIntroLogos", c.skipIntroLogos) != 0;
+  c.skipCutscenes = ReadInt(path, L"Videos", L"SkipCutscenes", c.skipCutscenes) != 0;
 
   c.log = ReadInt(path, L"Debug", L"Log", c.log) != 0;
 
   if (c.simHz <= 0) c.simHz = 30;
-  if (c.maxSimStepsPerFrame < 1) c.maxSimStepsPerFrame = 1;
   if (c.fpsLimit < 0) c.fpsLimit = 0;
 }
