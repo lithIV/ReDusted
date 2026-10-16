@@ -18,6 +18,9 @@ struct Config {
   bool skipIntroLogos = true;  // the startup logo video
   bool skipCutscenes = true;   // every later video, e.g. after choosing a map
 
+  // [Subtitles]
+  bool subtitleLog = false;  // log text lookups and sound starts (research)
+
   // [Debug]
   bool log = true;
 };

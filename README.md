@@ -12,7 +12,7 @@ woohoo one of the first mods!!!
 | Frame limiter / vsync control | Done |
 | Fixed-rate terrain/water simulation (60+ fps without fast physics) | Done, tested in game |
 | Skip startup logos / cutscenes (separate ini toggles) | Done, tested in game |
-| Subtitles for voice lines | Researched; plan in the notes below |
+| Subtitles for voice lines | Not needed: the game already shows the shaman's lines as text (checked in game) |
 | New levels | Planned |
 
 ## Install
@@ -152,28 +152,16 @@ text renderer (`STR_Display_W`, sprite fonts).
 **Drawing.** The exe already imports `d3dx9_43.dll`, so an `ID3DXFont` overlay
 drawn from the existing `Present` hook needs no new dependency.
 
-#### Plan
+#### Result
 
-1. **Find out what the game shows today (one playtest, logging only).** Add a
-   `[Subtitles] Log=1` mode that hooks the wrappers above, plus
-   `FIR_MovieElementSetWText` and `SND_Play`/`SND_InstanceRqPlay`, and logs the
-   text key, language, text, delay and the sound key with timestamps. Play the
-   opening of the first map. This tells us whether shaman lines already appear
-   on screen (they may, in which case the work is about the lines that don't),
-   and how a line's text and sound are tied together at runtime.
-2. **Catch a line when it starts.** Hook `TXT_SoundGet` (both wrappers): when a
-   script asks for a line's sound, store sound key → entry. When that sound
-   starts playing (play natives), queue the entry's `TXT_cwstr` text in the
-   current language. Fallback if the play natives don't pass the key cleanly:
-   show the text when `TXT_SoundGet` is called.
-3. **Timing.** Show the line until its sound instance stops
-   (`SND_InstanceIsPlaying`), or for `SND_BankItemDurationGet` / `TXT_DelayGet`
-   seconds, with a minimum on-screen time based on text length.
-4. **Draw it.** `ID3DXFont` in `hkPresent` (draw before calling the original
-   Present), bottom-centre, with an outline or shaded box, scaled to the back
-   buffer height. Recreate the font on `Reset` (`OnLostDevice`/`OnResetDevice`).
-   Strip `<…>` markup. Settings: `[Subtitles] Enabled`, `Size`, `Background`.
-5. Later, if it should look native: put the text through the game's own Flash
-   tooltip movie instead of D3DX.
+A logging build (`[Subtitles] Log=1`) hooks the object lookup at `0x82F7A0`
+(text manager vtable `0x8ECF28` slot 10; it serves every kind of loaded
+object, not only text) and the sound start at `0x68C290` (thiscall: holder,
+sound key, flags; used by `SND_Play` and `SND_InstanceRqPlay`). On the first
+map, each shaman line is fetched for display through `TXT_cwstr` (lookup from
+`0x5CD6CB`) at the same moment as `TXT_SoundGet` (from `0x66CE44`), 3 to 5
+seconds apart, and the game shows it on screen. The English language slots of
+these entries have no sound attached. So the voiced lines are already
+subtitled, and no overlay is needed.
 
 MinHook (BSD-2-Clause) is vendored in `external/minhook`.

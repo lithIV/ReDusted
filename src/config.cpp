@@ -24,6 +24,8 @@ void LoadConfig(const wchar_t* path) {
   c.skipIntroLogos = ReadInt(path, L"Videos", L"SkipIntroLogos", c.skipIntroLogos) != 0;
   c.skipCutscenes = ReadInt(path, L"Videos", L"SkipCutscenes", c.skipCutscenes) != 0;
 
+  c.subtitleLog = ReadInt(path, L"Subtitles", L"Log", c.subtitleLog) != 0;
+
   c.log = ReadInt(path, L"Debug", L"Log", c.log) != 0;
 
   if (c.simHz <= 0) c.simHz = 30;
