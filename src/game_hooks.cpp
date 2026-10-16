@@ -7,6 +7,7 @@
 #include "log.h"
 #include "pattern.h"
 #include "simulation.h"
+#include "trace.h"
 
 namespace game {
 
@@ -55,6 +56,7 @@ static FrameTick_t oFrameTick;
 // Every frame of the game (menus included) goes through this tick, whatever
 // path the renderer takes, so the frame limiter lives here.
 static void __fastcall hkFrameTick(void* self, void* edx) {
+  trace::OnFrame();
   pacing::OnGameFrame();
   oFrameTick(self, edx);
 }

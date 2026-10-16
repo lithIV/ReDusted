@@ -112,6 +112,13 @@ the player calls before the first frame. The first video of a session is the
 startup logos (1280x720, 179 frames); the cutscene after choosing a map is the
 next one (532 frames).
 
+The age-rating screen before the logos cannot be skipped: it is a loading
+screen. The boot scripts call `WOR_LoadDynamicGroup` and then poll
+`WOR_IsLoading` while the main-menu world loads (about 5 s), and the logos
+follow once it is done. Running game time 10x faster during boot (engine time
+scale `[0x90C828]`, which the clock init at `0x5104E0` resets to 1.0) did not
+shorten it.
+
 ### Voice lines and text (for subtitles)
 
 The game runs on Ubisoft's Jade/LyN engine. Gameplay scripts are compiled into

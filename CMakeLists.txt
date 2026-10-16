@@ -29,7 +29,8 @@ add_library(ReDusted SHARED
   src/game_hooks.cpp
   src/simulation.cpp
   src/intros.cpp
-  src/subtitles.cpp)
+  src/subtitles.cpp
+  src/trace.cpp)
 target_link_libraries(ReDusted PRIVATE minhook winmm)
 set_target_properties(ReDusted PROPERTIES PREFIX "" SUFFIX ".asi")
 

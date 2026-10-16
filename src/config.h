@@ -23,6 +23,7 @@ struct Config {
 
   // [Debug]
   bool log = true;
+  bool traceNatives = false;  // log the first call of every script native
 };
 
 extern Config g_cfg;

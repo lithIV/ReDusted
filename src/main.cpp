@@ -8,6 +8,7 @@
 #include "graphics.h"
 #include "intros.h"
 #include "subtitles.h"
+#include "trace.h"
 #include "log.h"
 
 static std::wstring ModuleDir(HMODULE self) {
@@ -34,6 +35,7 @@ static void Init(HMODULE self) {
   game::Install();
   intros::Install();
   subtitles::Install();
+  trace::Install();
   MH_EnableHook(MH_ALL_HOOKS);
 }
 

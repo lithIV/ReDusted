@@ -27,6 +27,7 @@ void LoadConfig(const wchar_t* path) {
   c.subtitleLog = ReadInt(path, L"Subtitles", L"Log", c.subtitleLog) != 0;
 
   c.log = ReadInt(path, L"Debug", L"Log", c.log) != 0;
+  c.traceNatives = ReadInt(path, L"Debug", L"TraceNatives", c.traceNatives) != 0;
 
   if (c.simHz <= 0) c.simHz = 30;
   if (c.fpsLimit < 0) c.fpsLimit = 0;
