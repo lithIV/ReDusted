@@ -1,7 +1,6 @@
 # FromDustFix
 
-A runtime mod for the PC version of *From Dust* (2011). It requires your own
-copy of the game; no game files are included in this repository.
+woohoo one of the first mods!!!
 
 ## Features
 
