@@ -12,7 +12,6 @@ woohoo one of the first mods!!!
 | Frame limiter / vsync control | Done |
 | Fixed-rate terrain/water simulation (60+ fps without fast physics) | Done, tested in game |
 | Skip startup logos / cutscenes (separate ini toggles) | Done, tested in game |
-| Subtitles for voice lines | Not needed: the game already shows the shaman's lines as text (checked in game) |
 | New levels | Planned |
 
 ## Install
